@@ -8,7 +8,7 @@ import urllib.parse
 def load_3d_viewer_html() -> str:
     """Load the 3D viewer HTML content."""
     try:
-        with open(r"S:\Work (Souhail)\Archive\Quotation Carpentry App\project\app\static\html\3d_viewer.html", 'r') as f:
+        with open(r"project\app\static\html\3d_viewer.html", 'r') as f:
             return f.read()
     except FileNotFoundError:
         st.error("3D viewer HTML file not found")
