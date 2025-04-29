@@ -7,10 +7,10 @@ from utils.calculations import calculate_costs, calculate_delivery_time, calcula
 from utils.validation import validate_inputs, sanitize_text_input
 from utils.formatting import format_currency
 from utils.export import export_to_csv, export_to_pdf
-from components.letter_preview import update_3d_preview, load_available_fonts, handle_font_upload
+from components.letter_preview import update_3d_preview
 
 def render_quotation_form() -> None:
-    """Render the quotation form with a two-step process: first letters/font, then main options."""
+    """Render the quotation form with a two-step process: first letters, then main options."""
 
     # Material options with their rates
     material_options = {
@@ -51,8 +51,8 @@ def render_quotation_form() -> None:
             st.session_state.duplicate_quotation_index = None
             st.success("Quotation loaded. You can now modify it.")
 
-    # --- STEP 1: Small form for letters and font selection ---
-    st.header("Step 1: Enter Letters and Choose Font")
+    # --- STEP 1: Small form for letters input only ---
+    st.header("Step 1: Enter Letters")
     with st.form("letters_font_form", clear_on_submit=False):
         # Letters input
         letters = st.text_input(
@@ -65,63 +65,14 @@ def render_quotation_form() -> None:
         letters = sanitize_text_input(letters)
         num_letters = len(letters.strip())
 
-        # Font selection
-        font_options = [
-            ("helvetiker_bold", "Helvetiker Bold"),
-            ("helvetiker_regular", "Helvetiker Regular"),
-            ("optimer_bold", "Optimer Bold"),
-            ("optimer_regular", "Optimer Regular"),
-            ("gentilis_bold", "Gentilis Bold"),
-            ("gentilis_regular", "Gentilis Regular"),
-            ("droid_sans", "Droid Sans"),
-            ("droid_serif", "Droid Serif"),
-            ("roboto_regular", "Roboto Regular"),
-            ("roboto_bold", "Roboto Bold"),
-            ("times_new_roman", "Times New Roman"),
-            ("arial", "Arial"),
-            ("comic_sans", "Comic Sans"),
-            ("georgia", "Georgia"),
-            ("impact", "Impact"),
-            ("verdana", "Verdana"),
-            ("custom", "Custom Font (Upload below)")
-        ]
-
-        loaded_fonts = load_available_fonts()
-        font_dict = {k: v for k, v in font_options}
-        for f in loaded_fonts:
-            if f not in font_dict:
-                font_dict[f] = f.replace("_", " ").title()
-        final_font_options = [(k, v) for k, v in font_dict.items()]
-
-        current_font_key = st.session_state.letter_properties.get("font", "helvetiker_bold")
-        font_keys = [k for k, v in final_font_options]
-        font_display_names = [v for k, v in final_font_options]
-        if current_font_key in font_keys:
-            font_index = font_keys.index(current_font_key)
-        else:
-            font_index = 0
-
-        font_display = st.selectbox(
-            "Font Style",
-            options=font_display_names,
-            index=font_index,
-            key="step1_font"
-        )
-        font = font_keys[font_display_names.index(font_display)]
-
-        font_upload_expander = st.expander("Upload Custom Font")
-        with font_upload_expander:
-            handle_font_upload()
-
-        # --- Live 3D preview for font selection step ---
-        # Show a live preview of the letters with the selected font
+        # --- Live 3D preview for letter input step ---
         st.markdown("#### Live 3D Preview")
-        # For the preview, use the current letters and font, and default size/colors
+        # For the preview, use the current letters and default size/colors and a default font
         preview_letters = letters
         preview_height = st.session_state.letter_properties.get("height", 12.0)
         preview_width = st.session_state.letter_properties.get("width", 8.0)
         preview_depth = st.session_state.letter_properties.get("depth", 2.0)
-        preview_font = font
+        preview_font = "helvetiker_bold"  # Use a default font
         # Use default color blue for all letters in this step
         preview_letter_color_map = {i: "#2b5876" for i in range(len(preview_letters.strip()))}
         update_3d_preview(
@@ -132,13 +83,12 @@ def render_quotation_form() -> None:
             preview_font,
             preview_letter_color_map
         )
-        st.caption("Preview updates as you type or change font. (Font will be reflected in the 3D preview)")
+        st.caption("Preview updates as you type.")
 
         step1_submit = st.form_submit_button("Next: Choose Options", type="primary", use_container_width=True)
 
     if step1_submit:
         st.session_state.letter_properties["letters"] = letters
-        st.session_state.letter_properties["font"] = font
         st.session_state["step1_completed"] = True
         if "current_quote" in st.session_state:
             del st.session_state.current_quote
@@ -151,7 +101,6 @@ def render_quotation_form() -> None:
                 st.subheader("Step 2: Choose Options for Your Letters")
 
                 letters = st.session_state.letter_properties["letters"]
-                font = st.session_state.letter_properties["font"]
                 num_letters = len(letters.strip())
 
                 material = st.selectbox(
@@ -337,7 +286,7 @@ def render_quotation_form() -> None:
                             height,
                             width,
                             depth,
-                            st.session_state.letter_properties["font"],
+                            "helvetiker_bold",  # Use default font
                             letter_color_map
                         )
                     )
@@ -353,7 +302,7 @@ def render_quotation_form() -> None:
                         height,
                         width,
                         depth,
-                        font,
+                        "helvetiker_bold",  # Use default font
                         letter_color_map
                     )
                 )
@@ -398,7 +347,6 @@ def render_quotation_form() -> None:
 
                         quotation = {
                             "letters": letters,
-                            "font": font,
                             "material": material,
                             "dimensions": f"{height}\" x {width}\" x {depth}\"",
                             "height": height,
@@ -442,7 +390,6 @@ def render_quotation_form() -> None:
             if clear_form:
                 st.session_state.letter_properties = {
                     "letters": "LOGO",
-                    "font": "helvetiker_bold",
                     "material": "Acrylic",
                     "height": 12.0,
                     "width": 8.0,
@@ -476,7 +423,7 @@ def render_quotation_form() -> None:
                 "height": height,
                 "width": width,
                 "depth": depth,
-                "font": font,
+                "font": "helvetiker_bold",  # Use default font
                 "material": material.lower(),
                 "finish": finish
             }
@@ -495,17 +442,17 @@ def render_quotation_form() -> None:
                 preview_props["multiColor"] = False
                 preview_props["color"] = "#2b5876"
 
-            # --- Always update the 3D preview with the selected font ---
+            # --- Always update the 3D preview with the default font ---
             update_3d_preview(
                 letters,
                 height,
                 width,
                 depth,
-                font,
+                "helvetiker_bold",  # Use default font
                 letter_color_map
             )
 
-            st.caption("Rotate with mouse drag. Zoom with scroll wheel. Font selection is reflected in the preview.")
+            st.caption("Rotate with mouse drag. Zoom with scroll wheel.")
 
             if st.button("Reset View", key="reset_preview"):
                 st.markdown("""
@@ -519,7 +466,7 @@ def render_quotation_form() -> None:
                 </script>
                 """, unsafe_allow_html=True)
     else:
-        st.info("Please enter your letters and choose a font, then click 'Next: Choose Options' to continue.")
+        st.info("Please enter your letters and then click 'Next: Choose Options' to continue.")
 
 def display_quotation(quotation: Dict[str, Any]) -> None:
     """Display a detailed breakdown of the quotation."""
@@ -538,7 +485,6 @@ def display_quotation(quotation: Dict[str, Any]) -> None:
             specs_data = [
                 ["Material", quotation["material"]],
                 ["Dimensions", quotation["dimensions"]],
-                ["Font", quotation["font"]],
                 ["Finish", quotation["finish"]],
                 ["Quantity", f"{quotation['quantity']} sets ({quotation['total_letters']} letters)"]
             ]
@@ -706,7 +652,6 @@ def initialize_letter_properties() -> None:
     if "letter_properties" not in st.session_state:
         st.session_state.letter_properties = {
             "letters": "LOGO",
-            "font": "helvetiker_bold",
             "material": "Acrylic",
             "height": 12.0,
             "width": 8.0,
