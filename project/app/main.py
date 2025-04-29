@@ -59,6 +59,15 @@ def authenticate_user(username: str, password: str) -> bool:
         return True
     return False
 
+def change_user_password(username: str, old_password: str, new_password: str) -> bool:
+    """Change the password for a user. Returns True if successful."""
+    users = load_users()
+    if username in users and users[username]["password"] == hash_password(old_password):
+        users[username]["password"] = hash_password(new_password)
+        save_users(users)
+        return True
+    return False
+
 def login_signup_form():
     """Streamlit login/signup form."""
     st.title("Login or Sign Up")
@@ -304,16 +313,41 @@ def display_current_quotation() -> None:
 
 def render_settings() -> None:
     """Render the settings tab."""
-    # st.subheader("Application Settings")
-
-    # st.markdown("### User Preferences")
-    # # Toggle dark/light mode
-    # theme = st.radio("Theme", ["Light", "Dark"])
-
     st.markdown("### Account Settings")
+
+    # Initialize session state for password change UI
+    if "show_password_change" not in st.session_state:
+        st.session_state.show_password_change = False
+
     # Change password option
     if st.button("Change Password"):
         st.session_state.show_password_change = True
+
+    if st.session_state.get("show_password_change", False):
+        with st.form("change_password_form", clear_on_submit=True):
+            st.write("Change your password")
+            old_password = st.text_input("Current Password", type="password", key="old_password")
+            new_password = st.text_input("New Password", type="password", key="new_password")
+            new_password2 = st.text_input("Confirm New Password", type="password", key="new_password2")
+            submitted = st.form_submit_button("Update Password")
+            if submitted:
+                if not old_password or not new_password or not new_password2:
+                    st.warning("Please fill in all fields.")
+                elif new_password != new_password2:
+                    st.warning("New passwords do not match.")
+                elif len(new_password) < 4:
+                    st.warning("New password must be at least 4 characters.")
+                elif not st.session_state.username:
+                    st.error("No user logged in.")
+                elif not change_user_password(st.session_state.username, old_password, new_password):
+                    st.error("Current password is incorrect.")
+                else:
+                    st.success("Password updated successfully.")
+                    st.session_state.show_password_change = False
+
+        # Option to cancel password change
+        if st.button("Cancel", key="cancel_password_change"):
+            st.session_state.show_password_change = False
 
     # Log out button
     if st.button("Log Out"):
