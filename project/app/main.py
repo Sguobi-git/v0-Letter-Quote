@@ -304,11 +304,11 @@ def display_current_quotation() -> None:
 
 def render_settings() -> None:
     """Render the settings tab."""
-    st.subheader("Application Settings")
+    # st.subheader("Application Settings")
 
-    st.markdown("### User Preferences")
-    # Toggle dark/light mode
-    theme = st.radio("Theme", ["Light", "Dark"])
+    # st.markdown("### User Preferences")
+    # # Toggle dark/light mode
+    # theme = st.radio("Theme", ["Light", "Dark"])
 
     st.markdown("### Account Settings")
     # Change password option
