@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Letter Viewer</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+        }
+        
+        #viewer-container {
+            width: 100%;
+            height: 100%;
+            background-color: #f8f9fa;
+        }
+        
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .spinner {
+            border: 5px solid rgba(0, 0, 0, 0.1);
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border-left-color: #4568dc;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+        
+        .controls-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 8px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .control-button {
+            background-color: #4568dc;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.2s;
+        }
+        
+        .control-button:hover {
+            background-color: #3a56b9;
+        }
+    </style>
+</head>
+<body>
+    <div id="viewer-container"></div>
+    
+    <div class="loading-overlay" id="loading-overlay">
+        <div class="spinner"></div>
+    </div>
+    
+    <div class="controls-panel" id="controls-panel" style="display: none;">
+        <button class="control-button" id="reset-view">Reset View</button>
+        <button class="control-button" id="toggle-rotation">Pause Rotation</button>
+        <button class="control-button" id="toggle-lights">Toggle Lights</button>
+        <button class="control-button" id="zoom-in">+</button>
+        <button class="control-button" id="zoom-out">-</button>
+    </div>
+    
+    <!-- ThreeJS Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Import OrbitControls correctly -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FontLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/geometries/TextGeometry.js"></script>
+    
+    <!-- Custom Viewer Script -->
+    <script>
+        /**
+         * Helper: Map font name to font URL
+         */
+        function getFontUrl(fontName) {
+            const fontMap = {
+                'helvetiker': 'https://threejs.org/examples/fonts/helvetiker_regular.typeface.json',
+                'helvetiker_bold': 'https://threejs.org/examples/fonts/helvetiker_bold.typeface.json',
+                'optimer': 'https://threejs.org/examples/fonts/optimer_regular.typeface.json',
+                'optimer_bold': 'https://threejs.org/examples/fonts/optimer_bold.typeface.json',
+                'gentilis': 'https://threejs.org/examples/fonts/gentilis_regular.typeface.json',
+                'gentilis_bold': 'https://threejs.org/examples/fonts/gentilis_bold.typeface.json',
+                'droid_sans': 'https://threejs.org/examples/fonts/droid/droid_sans_regular.typeface.json',
+                'droid_sans_bold': 'https://threejs.org/examples/fonts/droid/droid_sans_bold.typeface.json',
+                'droid_serif': 'https://threejs.org/examples/fonts/droid/droid_serif_regular.typeface.json',
+                'droid_serif_bold': 'https://threejs.org/examples/fonts/droid/droid_serif_bold.typeface.json'
+            };
+            if (!fontName) return fontMap['helvetiker_bold'];
+            if (fontMap[fontName]) return fontMap[fontName];
+            if (fontMap[fontName.toLowerCase()]) return fontMap[fontName.toLowerCase()];
+            return fontMap['helvetiker_bold'];
+        }
+
+        /**
+         * LetterViewer class for 3D text visualization
+         */
+        class LetterViewer {
+            constructor(containerId, config) {
+                this.container = document.getElementById(containerId);
+                this.config = config;
+                this.isRotating = true;
+                this.lightsOn = true;
+                this.rotationPivot = new THREE.Group();
+                this.init();
+            }
+            
+            init() {
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0xf8f9fa);
+                this.scene.add(this.rotationPivot);
+                this.camera = new THREE.PerspectiveCamera(
+                    75,
+                    this.container.clientWidth / this.container.clientHeight,
+                    0.1,
+                    1000
+                );
+                this.camera.position.z = 10;
+                this.renderer = new THREE.WebGLRenderer({ antialias: true });
+                this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
+                this.container.appendChild(this.renderer.domElement);
+                this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+                this.controls.enableDamping = true;
+                this.controls.dampingFactor = 0.05;
+                this.setupLights();
+                this.createLetters();
+                window.addEventListener('resize', () => this.onWindowResize());
+                this.animate();
+            }
+            
+            setupLights() {
+                this.ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+                this.scene.add(this.ambientLight);
+                this.dirLight1 = new THREE.DirectionalLight(0xffffff, 0.8);
+                this.dirLight1.position.set(1, 1, 1);
+                this.scene.add(this.dirLight1);
+                this.dirLight2 = new THREE.DirectionalLight(0xffffff, 0.5);
+                this.dirLight2.position.set(-1, -1, -1);
+                this.scene.add(this.dirLight2);
+                this.pointLight = new THREE.PointLight(0xffffff, 0.8);
+                this.pointLight.position.set(0, 5, 5);
+                this.scene.add(this.pointLight);
+            }
+            
+            createLetters() {
+                // Show loading overlay while font is loading
+                document.getElementById('loading-overlay').style.display = 'flex';
+                document.getElementById('controls-panel').style.display = 'none';
+
+                // Remove previous text mesh
+                while(this.rotationPivot.children.length > 0) {
+                    this.rotationPivot.remove(this.rotationPivot.children[0]);
+                }
+
+                const fontUrl = getFontUrl(this.config.font);
+                const fontLoader = new THREE.FontLoader();
+                fontLoader.load(fontUrl, (font) => {
+                    const letters = this.config.letters;
+                    const textGeometry = new THREE.TextGeometry(letters, {
+                        font: font,
+                        size: this.config.height,
+                        height: this.config.depth,
+                        curveSegments: 12,
+                        bevelEnabled: true,
+                        bevelThickness: 0.1,
+                        bevelSize: 0.05,
+                        bevelOffset: 0,
+                        bevelSegments: 5
+                    });
+                    textGeometry.computeBoundingBox();
+                    const textWidth = textGeometry.boundingBox.max.x - textGeometry.boundingBox.min.x;
+                    const textHeight = textGeometry.boundingBox.max.y - textGeometry.boundingBox.min.y;
+                    const textDepth = textGeometry.boundingBox.max.z - textGeometry.boundingBox.min.z;
+                    textGeometry.translate(
+                        -textWidth / 2,
+                        -textHeight / 2,
+                        -textDepth / 2
+                    );
+                    let material;
+                    if (this.config.material === 'metal') {
+                        material = new THREE.MeshStandardMaterial({
+                            color: this.config.color,
+                            metalness: 0.8,
+                            roughness: 0.2,
+                        });
+                    } else if (this.config.material === 'plastic') {
+                        material = new THREE.MeshPhongMaterial({
+                            color: this.config.color,
+                            shininess: 70,
+                            specular: 0x444444
+                        });
+                    } else {
+                        material = new THREE.MeshLambertMaterial({
+                            color: this.config.color
+                        });
+                    }
+                    if (this.config.multiColor && Object.keys(this.config.letterColors).length > 0) {
+                        this.textMesh = new THREE.Group();
+                        for (let i = 0; i < letters.length; i++) {
+                            const letterGeometry = new THREE.TextGeometry(letters[i], {
+                                font: font,
+                                size: this.config.height,
+                                height: this.config.depth,
+                                curveSegments: 12,
+                                bevelEnabled: true,
+                                bevelThickness: 0.1,
+                                bevelSize: 0.05,
+                                bevelOffset: 0,
+                                bevelSegments: 5
+                            });
+                            letterGeometry.computeBoundingBox();
+                            const letterWidth = letterGeometry.boundingBox.max.x - letterGeometry.boundingBox.min.x;
+                            const letterColor = this.config.letterColors[i] || this.config.color;
+                            const letterMaterial = material.clone();
+                            letterMaterial.color.set(letterColor);
+                            const letterMesh = new THREE.Mesh(letterGeometry, letterMaterial);
+                            const totalWidth = letters.length * letterWidth * 0.7;
+                            const startX = -totalWidth / 2;
+                            letterMesh.position.x = startX + (i * letterWidth * 0.7);
+                            this.textMesh.add(letterMesh);
+                        }
+                    } else {
+                        this.textMesh = new THREE.Mesh(textGeometry, material);
+                    }
+                    this.textMesh.castShadow = true;
+                    this.textMesh.receiveShadow = true;
+                    this.rotationPivot.add(this.textMesh);
+                    this.centerCamera();
+                    document.getElementById('loading-overlay').style.display = 'none';
+                    document.getElementById('controls-panel').style.display = 'flex';
+                    notifyReady();
+                }, 
+                (xhr) => {
+                    // Optionally show progress
+                    // console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+                },
+                (error) => {
+                    console.error('Error loading font:', error);
+                    document.getElementById('loading-overlay').style.display = 'none';
+                    document.getElementById('viewer-container').innerHTML = '<div style="color: red; padding: 20px;">Error loading 3D viewer. Please refresh the page.</div>';
+                });
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                if (this.isRotating) {
+                    this.rotationPivot.rotation.y += 0.01;
+                }
+                this.controls.update();
+                this.renderer.render(this.scene, this.camera);
+            }
+            
+            onWindowResize() {
+                this.camera.aspect = this.container.clientWidth / this.container.clientHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
+            }
+            
+            centerCamera() {
+                this.controls.target.set(0, 0, 0);
+                this.camera.position.set(0, 0, this.config.height * 4);
+                this.controls.update();
+            }
+            
+            toggleAnimation(isRotating) {
+                this.isRotating = isRotating;
+                return this.isRotating;
+            }
+            
+            toggleLights() {
+                this.lightsOn = !this.lightsOn;
+                if (this.lightsOn) {
+                    this.ambientLight.intensity = 0.5;
+                    this.dirLight1.intensity = 0.8;
+                    this.dirLight2.intensity = 0.5;
+                    this.pointLight.intensity = 0.8;
+                } else {
+                    this.ambientLight.intensity = 0.1;
+                    this.dirLight1.intensity = 0.2;
+                    this.dirLight2.intensity = 0.1;
+                    this.pointLight.intensity = 0.3;
+                }
+                return this.lightsOn;
+            }
+            
+            updateConfig(newConfig) {
+                // If font changed, force re-create letters with new font
+                const fontChanged = newConfig.font && newConfig.font !== this.config.font;
+                this.config = { ...this.config, ...newConfig };
+                // Always re-create letters, as font or other properties may have changed
+                this.createLetters();
+            }
+            
+            zoomIn() {
+                this.camera.position.z *= 0.8;
+                this.controls.update();
+            }
+            
+            zoomOut() {
+                this.camera.position.z *= 1.2;
+                this.controls.update();
+            }
+        }
+        
+        // Main viewer initialization
+        let viewer;
+        let viewerConfig = {
+            letters: 'LOGO',
+            height: 2,
+            depth: 0.6,
+            material: 'plastic',
+            finish: 'Standard',
+            color: '#3498db',
+            multiColor: false,
+            letterColors: {},
+            font: 'helvetiker_bold'
+        };
+        
+        let isRotating = true;
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('letters')) viewerConfig.letters = urlParams.get('letters');
+            if (urlParams.has('height')) viewerConfig.height = parseFloat(urlParams.get('height'));
+            if (urlParams.has('depth')) viewerConfig.depth = parseFloat(urlParams.get('depth'));
+            if (urlParams.has('material')) viewerConfig.material = urlParams.get('material');
+            if (urlParams.has('finish')) viewerConfig.finish = urlParams.get('finish');
+            if (urlParams.has('color')) viewerConfig.color = urlParams.get('color');
+            if (urlParams.has('multiColor')) viewerConfig.multiColor = urlParams.get('multiColor') === 'true';
+            if (urlParams.has('font')) viewerConfig.font = urlParams.get('font');
+            if (urlParams.has('letterColors')) {
+                try {
+                    viewerConfig.letterColors = JSON.parse(decodeURIComponent(urlParams.get('letterColors')));
+                } catch (e) {
+                    console.error('Error parsing letter colors:', e);
+                }
+            }
+            viewer = new LetterViewer('viewer-container', viewerConfig);
+            setupControls();
+            setTimeout(() => {
+                if (document.getElementById('loading-overlay').style.display !== 'none') {
+                    document.getElementById('loading-overlay').style.display = 'none';
+                    document.getElementById('controls-panel').style.display = 'flex';
+                    console.warn('Loading timeout reached, forcing display of controls');
+                }
+            }, 5000);
+
+            // Listen for messages from parent (Streamlit)
+            window.addEventListener('message', (event) => {
+                const data = event.data;
+                if (data.type === 'update_config') {
+                    updateViewerConfig(data.config);
+                }
+            });
+        });
+        
+        function setupControls() {
+            document.getElementById('reset-view').addEventListener('click', () => {
+                viewer.centerCamera();
+            });
+            const rotationButton = document.getElementById('toggle-rotation');
+            rotationButton.addEventListener('click', () => {
+                isRotating = !isRotating;
+                viewer.toggleAnimation(isRotating);
+                rotationButton.textContent = isRotating ? 'Pause Rotation' : 'Resume Rotation';
+            });
+            const lightsButton = document.getElementById('toggle-lights');
+            lightsButton.addEventListener('click', () => {
+                const lightsOn = viewer.toggleLights();
+                lightsButton.textContent = lightsOn ? 'Dim Lights' : 'Brighten Lights';
+            });
+            document.getElementById('zoom-in').addEventListener('click', () => {
+                viewer.zoomIn();
+            });
+            document.getElementById('zoom-out').addEventListener('click', () => {
+                viewer.zoomOut();
+            });
+        }
+        
+        function updateViewerConfig(config) {
+            if (viewer) {
+                viewer.updateConfig(config);
+            }
+        }
+        
+        function notifyReady() {
+            if (window.parent) {
+                window.parent.postMessage({ type: 'viewer_ready' }, '*');
+            }
+        }
+        
+        window.addEventListener('error', function(event) {
+            console.error('Global error:', event.message);
+            document.getElementById('loading-overlay').style.display = 'none';
+            document.getElementById('viewer-container').innerHTML += 
+                '<div style="color: red; padding: 20px; position: absolute; top: 0; left: 0; right: 0;">Error: ' + 
+                event.message + '</div>';
+        });
+    </script>
+</body>
+</html>
