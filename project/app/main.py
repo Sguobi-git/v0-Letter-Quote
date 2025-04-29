@@ -108,7 +108,7 @@ st.set_page_config(
 def load_css() -> None:
     """Load custom CSS styles."""
     try:
-        with open(r'S:\Work (Souhail)\Archive\Quotation Carpentry App\project\app\static\css\styles.css') as f:
+        with open(r'static\css\styles.css') as f:
             st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
     except FileNotFoundError:
         st.warning("Custom CSS file not found. Using default styles.")
@@ -163,7 +163,7 @@ def main() -> None:
     with st.container():
         col1, col2 = st.columns([1, 5])
         with col1:
-            st.image(r"S:\Work (Souhail)\Archive\Quotation Carpentry App\project\app\static\images\logo.jpg", width=200)
+            st.image(r"static\images\logo.jpg", width=200)
         with col2:
             st.title("3D Letter Quotation Calculator")
             st.caption("Design custom 3D letters with real-time preview and instant pricing")
