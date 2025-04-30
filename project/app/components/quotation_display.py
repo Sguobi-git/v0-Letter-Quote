@@ -147,7 +147,8 @@ def display_quotation_details(quote_idx: int) -> None:
                     file_name=f"quotation_{quote_idx + 1}_{datetime.now().strftime('%Y%m%d')}.csv",
                     mime="text/csv",
                     key=f"download_csv_{quote_idx}",
-                    use_container_width=True
+                    use_container_width=True,
+                    help="Download quote as CSV format for spreadsheets"
                 )
             
             with col2:
@@ -158,5 +159,6 @@ def display_quotation_details(quote_idx: int) -> None:
                     file_name=f"quotation_{quote_idx + 1}_{datetime.now().strftime('%Y%m%d')}.pdf",
                     mime="application/pdf",
                     key=f"download_pdf_{quote_idx}",
-                    use_container_width=True
+                    use_container_width=True,
+                    help="Download quote as PDF document"
                 )
