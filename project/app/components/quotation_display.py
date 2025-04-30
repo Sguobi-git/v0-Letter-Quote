@@ -5,6 +5,9 @@ def display_quotation_details(quote_idx: int) -> None:
         
         # Display in an expander
         with st.expander("Quotation Details", expanded=True):
+            # Display logo at the top
+            st.image(r"project/app/static/images/original_logo.png", width=200)
+            
             # Basic information
             col1, col2 = st.columns(2)
             
