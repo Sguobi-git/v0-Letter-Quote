@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 # Import components
 from components.letter_preview import render_3d_preview
 from components.quotation_form import render_quotation_form
-# from components.quotation_display import display_quotation_details  # We'll define our own below
+from components.quotation_display import display_quotation_details
 
 # Import utilities
 from utils.calculations import calculate_costs, calculate_delivery_time, calculate_bulk_discount
@@ -68,57 +68,23 @@ def change_user_password(username: str, old_password: str, new_password: str) ->
         return True
     return False
 
-# --- Persistent Login Utilities ---
-
-LOGIN_FILE = os.path.join(os.path.dirname(__file__), "login_state.json")
-
-def save_login_state(username: str) -> None:
-    """Save the currently logged-in username to a file."""
-    try:
-        with open(LOGIN_FILE, "w") as f:
-            json.dump({"username": username}, f)
-    except Exception:
-        pass
-
-def load_login_state() -> Optional[str]:
-    """Load the currently logged-in username from a file."""
-    if not os.path.exists(LOGIN_FILE):
-        return None
-    try:
-        with open(LOGIN_FILE, "r") as f:
-            data = json.load(f)
-            return data.get("username")
-    except Exception:
-        return None
-
-def clear_login_state() -> None:
-    """Remove the persistent login file."""
-    try:
-        if os.path.exists(LOGIN_FILE):
-            os.remove(LOGIN_FILE)
-    except Exception:
-        pass
-
 def login_signup_form():
-    """Streamlit login/signup form with persistent login support."""
+    """Streamlit login/signup form."""
     st.title("Login or Sign Up")
     tab_login, tab_signup = st.tabs(["Login", "Sign Up"])
 
     with tab_login:
         login_username = st.text_input("Username", key="login_username")
         login_password = st.text_input("Password", type="password", key="login_password")
-        remember_me = st.checkbox("Remember me", key="remember_me")
         login_btn = st.button("Login", key="login_btn")
         if login_btn:
             if authenticate_user(login_username, login_password):
                 st.session_state.authenticated = True
                 st.session_state.username = login_username
-                if remember_me:
-                    save_login_state(login_username)
-                else:
-                    clear_login_state()
                 st.success("Logged in successfully!")
                 st.experimental_rerun()
+                # from streamlit.runtime.scriptrunner import rerun
+                # rerun()
             else:
                 st.error("Invalid username or password.")
 
@@ -160,20 +126,7 @@ def load_css() -> None:
 def init_session_state() -> None:
     """Initialize all session state variables."""
     if 'authenticated' not in st.session_state:
-        # Try to load persistent login
-        username = load_login_state()
-        if username is not None:
-            # Check if user still exists
-            users = load_users()
-            if username in users:
-                st.session_state.authenticated = True
-                st.session_state.username = username
-            else:
-                st.session_state.authenticated = False
-                st.session_state.username = None
-                clear_login_state()
-        else:
-            st.session_state.authenticated = False
+        st.session_state.authenticated = False
 
     if 'username' not in st.session_state:
         st.session_state.username = None
@@ -227,7 +180,7 @@ def main() -> None:
     st.markdown("---")
 
     # Main content with tabs
-    tab1, tab2 = st.tabs(["Create New Quote", "Settings"])
+    tab1, tab2, tab3 = st.tabs(["Create New Quote", "Saved Quotes", "Settings"])
 
     with tab1:
         render_3d_preview()
@@ -235,26 +188,10 @@ def main() -> None:
 
     # with tab2:
     #     # Display saved quotations
-    #     # Instead of calling display_quotation_details() with no argument,
-    #     # show a list of saved quotations and allow user to select one to view details.
-    #     if not st.session_state.quotations:
-    #         st.info("No saved quotations yet.")
-    #     else:
-    #         st.markdown("### Saved Quotations")
-    #         # List quotations with a selectbox or radio
-    #         quote_labels = [
-    #             f"#{i+1}: {q['letters']} ({q.get('material', 'Material')}, {q.get('color', 'Color')})"
-    #             for i, q in enumerate(st.session_state.quotations)
-    #         ]
-    #         selected_idx = st.selectbox(
-    #             "Select a quotation to view details:",
-    #             options=list(range(len(st.session_state.quotations))),
-    #             format_func=lambda i: quote_labels[i],
-    #             key="quote_select_idx"
-    #         )
-    #         display_quotation_details(selected_idx)
+    #     # display_saved_quotations()
+    #     display_quotation_details()
 
-    with tab2:
+    with tab3:
         # Settings tab
         render_settings()
 
@@ -323,9 +260,9 @@ def display_current_quotation() -> None:
         # Action buttons
         col1, col2 = st.columns(2)
         with col1:
-            # if st.button("Save Quotation", key="save_quote_btn", use_container_width=True):
-            #     st.session_state.quotations.append(quote)
-            #     st.success("Quotation saved successfully!")
+            if st.button("Save Quotation", key="save_quote_btn", use_container_width=True):
+                st.session_state.quotations.append(quote)
+                st.success("Quotation saved successfully!")
 
         with col2:
             export_options = st.selectbox("Export Format", ["CSV", "PDF"], key="export_format")
@@ -375,112 +312,6 @@ def display_current_quotation() -> None:
                 # Reset after download button is shown
                 st.session_state.show_download = False
 
-def display_quotation_details(quote_idx: int) -> None:
-    """Display detailed information for a specific quotation."""
-    if 0 <= quote_idx < len(st.session_state.quotations):
-        quote = st.session_state.quotations[quote_idx]
-        
-        # Display in an expander
-        with st.expander("Quotation Details", expanded=True):            
-            # Basic information
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                st.markdown("### Order Information")
-                st.markdown(f"**Quotation #:** {quote_idx + 1}")
-                st.markdown(f"**Letters:** {quote['letters']}")
-                st.markdown(f"**Font:** {quote.get('font', 'Default')}")
-                st.markdown(f"**Material:** {quote['material']}")
-                st.markdown(f"**Dimensions:** {quote['dimensions']}")
-                st.markdown(f"**Sets of Letters:** {quote['quantity']}")
-                st.markdown(f"**Total Letters:** {quote['total_letters']}")
-                st.markdown(f"**Finish:** {quote['finish']}")
-                
-                # Display color information
-                if quote.get('multi_color', False):
-                    st.markdown("### Color Information")
-                    for letter, color in quote['letter_colors'].items():
-                        st.markdown(f"- Letter '{letter}': <span style='color:{color['hex']}'>\u25A0</span> {color['name']}", unsafe_allow_html=True)
-                else:
-                    st.markdown(f"**Color:** <span style='color:{quote['color_hex']}'>\u25A0</span> {quote['color']}", unsafe_allow_html=True)
-            
-            with col2:
-                st.markdown("### Options & Pricing")
-                # Display selected options
-                st.markdown("**Selected Options:**")
-                for option, selected in quote['options'].items():
-                    st.markdown(f"- {option}: {'Yes' if selected else 'No'}")
-                
-                # Cost breakdown
-                st.markdown("### Cost Breakdown")
-                costs = quote['costs']
-                st.markdown(f"Material Cost: {format_currency(costs['material_cost'])}")
-                st.markdown(f"Finish Cost: {format_currency(costs['finish_cost'])}")
-                st.markdown(f"Options Cost: {format_currency(costs['options_cost'])}")
-                st.markdown(f"**Subtotal:** {format_currency(costs['subtotal'])}")
-                
-                # Display discount if applicable
-                if costs.get('discount', 0) > 0:
-                    st.markdown(f"**Bulk Discount ({costs['discount_percentage']}%):** -{format_currency(costs['discount'])}")
-                
-                st.markdown(f"**Tax (10%):** {format_currency(costs['tax'])}")
-                st.markdown(f"**Final Total:** {format_currency(costs['total'])}")
-                
-                # Display estimated delivery time
-                if 'estimated_delivery_days' in quote:
-                    delivery_days = quote['estimated_delivery_days']
-                    delivery_date = datetime.now().strftime("%B %d, %Y")  # In a real app, calculate from saved date
-                    st.markdown(f"**Production Time:** {delivery_days} business days")
-        
-        # Add export tab
-        st.markdown("### Export Options")
-        
-        # Pre-generate the export data to avoid timing issues
-        csv_data = export_to_csv(quote)
-        pdf_data = export_to_pdf(quote)
-
-        # CSV download button
-        st.download_button(
-            label="Download Quotation as CSV",
-            data=csv_data,
-            file_name="quotation.csv",
-            mime="text/csv"
-        )
-        
-        # PDF download button
-        st.download_button(
-            label="Download Quotation as PDF",
-            data=pdf_data,
-            file_name="quotation.pdf",
-            mime="application/pdf"
-        )
-
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            # Direct download button with pre-generated CSV data
-            st.download_button(
-                label="Export as CSV",
-                data=csv_data,
-                file_name=f"quotation_{quote['letters'].replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.csv",
-                mime="text/csv",
-                key=f"download_csv_{quote_idx}",
-                use_container_width=True,
-                help="Download quote as CSV format for spreadsheets"
-            )
-        
-        with col2:
-            # Direct download button with pre-generated PDF data
-            st.download_button(
-                label="Export as PDF", 
-                data=pdf_data,
-                file_name=f"quotation_{quote['letters'].replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.pdf",
-                mime="application/pdf",
-                key=f"download_pdf_{quote_idx}",
-                use_container_width=True,
-                help="Download quote as PDF document"
-            )
-
 def render_settings() -> None:
     """Render the settings tab."""
     st.markdown("### Account Settings")
@@ -523,7 +354,6 @@ def render_settings() -> None:
     if st.button("Log Out"):
         st.session_state.authenticated = False
         st.session_state.username = None
-        clear_login_state()
         st.rerun()
 
 if __name__ == "__main__":
