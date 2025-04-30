@@ -252,13 +252,13 @@ def export_to_pdf(quotation: Dict[str, Any]) -> bytes:
             elements.append(delivery_table)
             elements.append(Spacer(1, 0.5*inch))
         
-        # Thank you message
-        thank_you_style = ParagraphStyle(
-            'Thank You',
-            parent=styles['Italic'],
-            alignment=1,  # Center alignment
-        )
-        elements.append(Paragraph("Thank you for your business!", thank_you_style))
+        # # Thank you message
+        # thank_you_style = ParagraphStyle(
+        #     'Thank You',
+        #     parent=styles['Italic'],
+        #     alignment=1,  # Center alignment
+        # )
+        # elements.append(Paragraph("Thank you for your business!", thank_you_style))
         
         # --- Custom onFirstPage to draw logo in the top left corner ---
         def draw_logo_on_first_page(canvas, doc):
