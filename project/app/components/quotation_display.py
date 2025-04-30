@@ -252,7 +252,9 @@ def main() -> None:
                 format_func=lambda i: quote_labels[i],
                 key="quote_select_idx"
             )
-            display_quotation_details(selected_idx)
+            # Only call display_quotation_details if a valid index is selected
+            if selected_idx is not None and 0 <= selected_idx < len(st.session_state.quotations):
+                display_quotation_details(selected_idx)
 
     with tab3:
         # Settings tab
