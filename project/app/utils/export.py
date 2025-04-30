@@ -117,20 +117,22 @@ def export_to_pdf(quotation: Dict[str, Any]) -> bytes:
         subtitle_style = styles['Heading2']
         normal_style = styles['Normal']
 
-        # Prepare all the content elements (without logo)
-        content_elements = []
+        # Prepare logo info for later use in onFirstPage
+        logo_path = "project/app/static/images/original_logo.png"
+        logo_width_inch = 2.0
+        logo_height_inch = logo_width_inch * (142/400)  # keep aspect ratio
 
-        # Add title
-        content_elements.append(Paragraph("3D Letter Quotation", title_style))
-        content_elements.append(Spacer(1, 0.25*inch))
+        # Add title (no logo in flow, logo will be drawn on canvas)
+        elements.append(Paragraph("3D Letter Quotation", title_style))
+        elements.append(Spacer(1, 0.25*inch))
         
         # Add date
         current_date = datetime.now().strftime('%B %d, %Y')
-        content_elements.append(Paragraph(f"Date: {current_date}", normal_style))
-        content_elements.append(Spacer(1, 0.25*inch))
+        elements.append(Paragraph(f"Date: {current_date}", normal_style))
+        elements.append(Spacer(1, 0.25*inch))
         
         # Order Information
-        content_elements.append(Paragraph("Order Information", subtitle_style))
+        elements.append(Paragraph("Order Information", subtitle_style))
         
         # Create order info table data
         info_data = [
@@ -157,11 +159,11 @@ def export_to_pdf(quotation: Dict[str, Any]) -> bytes:
             ('PADDING', (0, 0), (-1, -1), 6),
         ]))
         
-        content_elements.append(info_table)
-        content_elements.append(Spacer(1, 0.25*inch))
+        elements.append(info_table)
+        elements.append(Spacer(1, 0.25*inch))
         
         # Selected Options
-        content_elements.append(Paragraph("Selected Options", subtitle_style))
+        elements.append(Paragraph("Selected Options", subtitle_style))
         
         options_data = []
         for option, selected in options.items():
@@ -179,11 +181,11 @@ def export_to_pdf(quotation: Dict[str, Any]) -> bytes:
             ('PADDING', (0, 0), (-1, -1), 6),
         ]))
         
-        content_elements.append(options_table)
-        content_elements.append(Spacer(1, 0.25*inch))
+        elements.append(options_table)
+        elements.append(Spacer(1, 0.25*inch))
         
         # Cost Breakdown
-        content_elements.append(Paragraph("Cost Breakdown", subtitle_style))
+        elements.append(Paragraph("Cost Breakdown", subtitle_style))
         
         costs_data = [
             ["Material Cost:", f"${costs.get('material_cost', 0):.2f}"],
@@ -222,12 +224,12 @@ def export_to_pdf(quotation: Dict[str, Any]) -> bytes:
             ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),  # Bold font for total
         ]))
         
-        content_elements.append(costs_table)
-        content_elements.append(Spacer(1, 0.25*inch))
+        elements.append(costs_table)
+        elements.append(Spacer(1, 0.25*inch))
         
         # Delivery information if available
         if 'estimated_delivery_days' in quotation:
-            content_elements.append(Paragraph("Delivery Information", subtitle_style))
+            elements.append(Paragraph("Delivery Information", subtitle_style))
             
             # Calculate delivery date
             delivery_days = quotation['estimated_delivery_days']
@@ -246,8 +248,8 @@ def export_to_pdf(quotation: Dict[str, Any]) -> bytes:
                 ('PADDING', (0, 0), (-1, -1), 6),
             ]))
             
-            content_elements.append(delivery_table)
-            content_elements.append(Spacer(1, 0.5*inch))
+            elements.append(delivery_table)
+            elements.append(Spacer(1, 0.5*inch))
         
         # Thank you message
         thank_you_style = ParagraphStyle(
@@ -255,33 +257,29 @@ def export_to_pdf(quotation: Dict[str, Any]) -> bytes:
             parent=styles['Italic'],
             alignment=1,  # Center alignment
         )
-        content_elements.append(Paragraph("Thank you for your business!", thank_you_style))
-
-        # --- Custom onFirstPage to draw logo in the top left corner, overlaying content ---
+        elements.append(Paragraph("Thank you for your business!", thank_you_style))
+        
+        # --- Custom onFirstPage to draw logo in the top left corner ---
         def draw_logo_on_first_page(canvas, doc):
-            logo_path = "project/app/static/images/original_logo.png"
+            # Draw the logo at the top left, overlaying the content (not pushing it down)
             if os.path.exists(logo_path):
                 try:
-                    # The cropped logo is 400x142 px. Let's keep its aspect ratio.
-                    # 400/142 ≈ 2.82. Let's set width to 2.0 inch, height to 0.71 inch (2.0/2.82)
-                    logo_width_inch = 2.0
-                    logo_height_inch = logo_width_inch * (142/400)
-                    logo_width = logo_width_inch * inch
-                    logo_height = logo_height_inch * inch
-                    # Place at top left, inside the page margins
+                    # The origin (0,0) is at the bottom left, so we need to draw at the top left
+                    # Letter size: 8.5 x 11 inch, margins: 1 inch (72pt)
+                    # So, left margin = 72pt, top margin = 72pt
+                    # Y coordinate from bottom: page height - top margin - logo height
+                    page_width, page_height = letter
                     x = doc.leftMargin
-                    y = doc.pagesize[1] - doc.topMargin - logo_height
-                    canvas.drawImage(logo_path, x, y, width=logo_width, height=logo_height, mask='auto')
+                    y = page_height - doc.topMargin - (logo_height_inch * inch)
+                    img = Image(logo_path, width=logo_width_inch * inch, height=logo_height_inch * inch)
+                    img.drawOn(canvas, x, y)
                 except Exception as img_err:
-                    st.warning(f"Could not add logo to PDF: {img_err}")
+                    st.warning(f"Could not draw logo on PDF: {img_err}")
             else:
                 st.warning(f"Logo file not found at {logo_path}. Skipping logo in PDF.")
 
-        # Build the PDF with the custom onFirstPage function
-        doc.build(content_elements, onFirstPage=draw_logo_on_first_page)
-        
-        # Build the PDF
-        doc.build(elements)
+        # Build the PDF with the logo drawn on the first page
+        doc.build(elements, onFirstPage=draw_logo_on_first_page)
         
         # Get the PDF value from the buffer
         pdf_value = buffer.getvalue()
