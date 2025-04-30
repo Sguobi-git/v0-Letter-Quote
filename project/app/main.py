@@ -227,18 +227,18 @@ def main() -> None:
     st.markdown("---")
 
     # Main content with tabs
-    tab1, tab2, tab3 = st.tabs(["Create New Quote", "Saved Quotes", "Settings"])
+    tab1, tab2 = st.tabs(["Create New Quote", "Settings"])
 
     with tab1:
         render_3d_preview()
         render_quotation_form()
 
-    with tab2:
-        # Display saved quotations
-        # display_saved_quotations()
-        display_quotation_details()
+    # with tab2:
+    #     # Display saved quotations
+    #     # display_saved_quotations()
+    #     display_quotation_details()
 
-    with tab3:
+    with tab2:
         # Settings tab
         render_settings()
 
@@ -306,10 +306,10 @@ def display_current_quotation() -> None:
 
         # Action buttons
         col1, col2 = st.columns(2)
-        with col1:
-            if st.button("Save Quotation", key="save_quote_btn", use_container_width=True):
-                st.session_state.quotations.append(quote)
-                st.success("Quotation saved successfully!")
+        # with col1:
+        #     if st.button("Save Quotation", key="save_quote_btn", use_container_width=True):
+        #         st.session_state.quotations.append(quote)
+        #         st.success("Quotation saved successfully!")
 
         with col2:
             export_options = st.selectbox("Export Format", ["CSV", "PDF"], key="export_format")
