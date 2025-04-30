@@ -4,10 +4,7 @@ def display_quotation_details(quote_idx: int) -> None:
         quote = st.session_state.quotations[quote_idx]
         
         # Display in an expander
-        with st.expander("Quotation Details", expanded=True):
-            # Display logo at the top
-            st.image(r"project/app/static/images/original_logo.png", width=200)
-            
+        with st.expander("Quotation Details", expanded=True):            
             # Basic information
             col1, col2 = st.columns(2)
             
