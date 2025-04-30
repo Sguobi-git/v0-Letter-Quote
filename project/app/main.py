@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 # Import components
 from components.letter_preview import render_3d_preview
 from components.quotation_form import render_quotation_form
-from components.quotation_display import display_saved_quotations
+from components.quotation_display import display_quotation_details
 
 # Import utilities
 from utils.calculations import calculate_costs, calculate_delivery_time, calculate_bulk_discount
