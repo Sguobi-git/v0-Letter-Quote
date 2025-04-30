@@ -61,6 +61,25 @@ def display_quotation_details(quote_idx: int) -> None:
         # Pre-generate the export data to avoid timing issues
         csv_data = export_to_csv(quote)
         pdf_data = export_to_pdf(quote)
+
+
+        # CSV download button
+        st.download_button(
+            label="Download Quotation as CSV",
+            data=csv_data,
+            file_name="quotation.csv",
+            mime="text/csv"
+        )
+        
+        # PDF download button
+        st.download_button(
+            label="Download Quotation as PDF",
+            data=pdf_data,
+            file_name="quotation.pdf",
+            mime="application/pdf"
+        )
+
+        
         
         col1, col2 = st.columns(2)
         
