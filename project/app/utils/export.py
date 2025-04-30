@@ -78,7 +78,7 @@ def export_to_csv(quotation: Dict[str, Any]) -> str:
 def export_to_pdf(quotation: Dict[str, Any]) -> bytes:
     """
     Export quotation data to PDF format with improved error handling and fallbacks.
-    Adds the company logo at the top of the PDF.
+    Adds the company logo at the top left of the PDF.
     
     Args:
         quotation: Quotation data dictionary
@@ -90,7 +90,7 @@ def export_to_pdf(quotation: Dict[str, Any]) -> bytes:
         # Try using ReportLab
         from reportlab.lib import colors
         from reportlab.lib.pagesizes import letter
-        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, Table as PlatypusTable
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
         from reportlab.lib.units import inch
         from io import BytesIO
@@ -111,17 +111,27 @@ def export_to_pdf(quotation: Dict[str, Any]) -> bytes:
         # Container for elements to build the PDF
         elements = []
         
-        # Add company logo at the top
+        # Add company logo at the top left
         logo_path = "project/app/static/images/original_logo.png"
+        logo_added = False
         if os.path.exists(logo_path):
             try:
-                # The logo is 400x400 px. To keep it clean and not crushed, set width and height to the same value,
-                # and use preserveAspectRatio=True (default). Let's display it at 1.5 inch (about 144 px) width.
-                # This will scale it down but keep it sharp and square.
                 logo_display_size = 1.5 * inch  # 1.5 inch width and height
-                logo = Image(logo_path, width=logo_display_size, height=logo_display_size, hAlign='CENTER')
-                elements.append(logo)
-                elements.append(Spacer(1, 0.2*inch))
+                logo = Image(logo_path, width=logo_display_size, height=logo_display_size, hAlign='LEFT')
+                # To ensure the logo is at the top left, use a 1-row, 2-col table: logo | (empty)
+                # This prevents the logo from being centered or pushed down by spacers.
+                logo_table = PlatypusTable([[logo, ""]], colWidths=[logo_display_size, None])
+                logo_table.setStyle(TableStyle([
+                    ('VALIGN', (0, 0), (0, 0), 'TOP'),
+                    ('LEFTPADDING', (0, 0), (0, 0), 0),
+                    ('RIGHTPADDING', (0, 0), (0, 0), 0),
+                    ('TOPPADDING', (0, 0), (0, 0), 0),
+                    ('BOTTOMPADDING', (0, 0), (0, 0), 0),
+                    # No grid or background
+                ]))
+                elements.append(logo_table)
+                elements.append(Spacer(1, 0.1*inch))
+                logo_added = True
             except Exception as img_err:
                 st.warning(f"Could not add logo to PDF: {img_err}")
         else:
@@ -162,7 +172,7 @@ def export_to_pdf(quotation: Dict[str, Any]) -> bytes:
             info_data.append(["Color:", str(quotation.get('color', 'N/A'))])
         
         # Create and style the table
-        info_table = Table(info_data, colWidths=[1.5*inch, 4*inch])
+        info_table = PlatypusTable(info_data, colWidths=[1.5*inch, 4*inch])
         info_table.setStyle(TableStyle([
             ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
             ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
@@ -184,7 +194,7 @@ def export_to_pdf(quotation: Dict[str, Any]) -> bytes:
         if not options_data:
             options_data = [["No options selected", ""]]
             
-        options_table = Table(options_data, colWidths=[1.5*inch, 4*inch])
+        options_table = PlatypusTable(options_data, colWidths=[1.5*inch, 4*inch])
         options_table.setStyle(TableStyle([
             ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
             ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
@@ -226,7 +236,7 @@ def export_to_pdf(quotation: Dict[str, Any]) -> bytes:
             ["Total:", f"${costs.get('total', 0):.2f}"]
         ])
         
-        costs_table = Table(costs_data, colWidths=[2.5*inch, 3*inch])
+        costs_table = PlatypusTable(costs_data, colWidths=[2.5*inch, 3*inch])
         costs_table.setStyle(TableStyle([
             ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
             ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
@@ -251,7 +261,7 @@ def export_to_pdf(quotation: Dict[str, Any]) -> bytes:
                 ["Estimated Completion:", delivery_date]
             ]
             
-            delivery_table = Table(delivery_data, colWidths=[1.5*inch, 4*inch])
+            delivery_table = PlatypusTable(delivery_data, colWidths=[1.5*inch, 4*inch])
             delivery_table.setStyle(TableStyle([
                 ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
                 ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
