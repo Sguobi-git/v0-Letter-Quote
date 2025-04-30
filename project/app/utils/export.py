@@ -52,9 +52,11 @@ def export_to_csv(quotation: Dict[str, Any]) -> str:
         
         # Add discount information if present with safe handling
         costs = quotation.get('costs', {})
-        if 'discount' in costs:
-            flat_data["Discount Percentage"] = f"{costs.get('discount_percentage', 0)}%"
-            flat_data["Discount Amount"] = f"{costs.get('discount', 0):.2f}"
+        if 'discount' in costs or 'discount_amount' in costs:
+            discount_percentage = costs.get('discount_percentage', 0)
+            discount_amount = costs.get('discount', costs.get('discount_amount', 0))
+            flat_data["Discount Percentage"] = f"{discount_percentage}%"
+            flat_data["Discount Amount"] = f"{discount_amount:.2f}"
         
         try:
             # Try pandas DataFrame approach
@@ -185,11 +187,21 @@ def export_to_pdf(quotation: Dict[str, Any]) -> bytes:
             ["Subtotal:", f"${costs.get('subtotal', 0):.2f}"]
         ]
         
-        # Add discount if available
+        # Add discount if available - check both key names for compatibility
+        discount_key = None
         if 'discount' in costs:
+            discount_key = 'discount'
+        elif 'discount_amount' in costs:
+            discount_key = 'discount_amount'
+            
+        if discount_key:
             discount_percentage = costs.get('discount_percentage', 0)
-            discount_amount = costs.get('discount', 0)
+            discount_amount = costs.get(discount_key, 0)
             costs_data.append([f"Bulk Discount ({discount_percentage}%):", f"-${discount_amount:.2f}"])
+            
+            # Check for after_discount key, otherwise calculate
+            if 'after_discount' in costs:
+                costs_data.append(["After Discount:", f"${costs.get('after_discount', 0):.2f}"])
         
         costs_data.extend([
             ["Tax (10%):", f"${costs.get('tax', 0):.2f}"],
@@ -249,106 +261,118 @@ def export_to_pdf(quotation: Dict[str, Any]) -> bytes:
         
         return pdf_value
         
+    except ImportError as import_err:
+        # Catch specific import error for ReportLab
+        st.warning(f"ReportLab not available: {import_err}. Falling back to text output.")
+        return _create_text_pdf_fallback(quotation)
+        
     except Exception as reportlab_error:
         # Log the ReportLab error
-        st.warning(f"ReportLab PDF generation failed: {reportlab_error}")
+        st.warning(f"ReportLab PDF generation failed: {reportlab_error}. Falling back to text output.")
+        return _create_text_pdf_fallback(quotation)
+
+
+def _create_text_pdf_fallback(quotation: Dict[str, Any]) -> bytes:
+    """
+    Create a simple text-based fallback when PDF generation fails.
+    
+    Args:
+        quotation: Quotation data dictionary
         
-        # Fall back to a simple text file
-        buffer = io.BytesIO()
+    Returns:
+        Text file content as bytes
+    """
+    buffer = io.BytesIO()
+    
+    try:
+        current_date = datetime.now().strftime('%B %d, %Y')
+        text_content = [
+            "3D LETTER QUOTATION",
+            "=" * 50,
+            f"Date: {current_date}",
+            "",
+            "ORDER INFORMATION:",
+            "-" * 50,
+            f"Letters: {quotation.get('letters', 'N/A')}",
+            f"Font: {quotation.get('font', 'Default')}",
+            f"Material: {quotation.get('material', 'N/A')}",
+            f"Dimensions: {quotation.get('dimensions', 'N/A')}",
+            f"Sets of Letters: {quotation.get('quantity', 'N/A')}",
+            f"Total Letters: {quotation.get('total_letters', 'N/A')}",
+            f"Finish: {quotation.get('finish', 'N/A')}",
+        ]
         
-        try:
-            current_date = datetime.now().strftime('%B %d, %Y')
-            text_content = [
-                "3D LETTER QUOTATION",
-                "=" * 50,
-                f"Date: {current_date}",
-                "",
-                "ORDER INFORMATION:",
+        if quotation.get('multi_color', False):
+            text_content.append("Color Mode: Multi-Color")
+        else:
+            text_content.append(f"Color: {quotation.get('color', 'N/A')}")
+        
+        text_content.extend([
+            "",
+            "SELECTED OPTIONS:",
+            "-" * 50
+        ])
+        
+        options = quotation.get('options', {})
+        if options:
+            for option, selected in options.items():
+                text_content.append(f"{option}: {'Yes' if selected else 'No'}")
+        else:
+            text_content.append("No options selected")
+        
+        costs = quotation.get('costs', {})
+        text_content.extend([
+            "",
+            "COST BREAKDOWN:",
+            "-" * 50,
+            f"Material Cost: ${costs.get('material_cost', 0):.2f}",
+            f"Finish Cost: ${costs.get('finish_cost', 0):.2f}",
+            f"Options Cost: ${costs.get('options_cost', 0):.2f}",
+            f"Subtotal: ${costs.get('subtotal', 0):.2f}"
+        ])
+        
+        # Check for both possible discount keys
+        if 'discount' in costs or 'discount_amount' in costs:
+            discount_percentage = costs.get('discount_percentage', 0)
+            discount_amount = costs.get('discount', costs.get('discount_amount', 0))
+            text_content.append(f"Bulk Discount ({discount_percentage}%): -${discount_amount:.2f}")
+            
+            if 'after_discount' in costs:
+                text_content.append(f"After Discount: ${costs.get('after_discount', 0):.2f}")
+        
+        text_content.extend([
+            f"Tax (10%): ${costs.get('tax', 0):.2f}",
+            f"TOTAL: ${costs.get('total', 0):.2f}",
+            ""
+        ])
+        
+        if 'estimated_delivery_days' in quotation:
+            delivery_days = quotation['estimated_delivery_days']
+            delivery_date = (datetime.now() + timedelta(days=delivery_days)).strftime("%B %d, %Y")
+            
+            text_content.extend([
+                "DELIVERY INFORMATION:",
                 "-" * 50,
-                f"Letters: {quotation.get('letters', 'N/A')}",
-                f"Font: {quotation.get('font', 'Default')}",
-                f"Material: {quotation.get('material', 'N/A')}",
-                f"Dimensions: {quotation.get('dimensions', 'N/A')}",
-                f"Sets of Letters: {quotation.get('quantity', 'N/A')}",
-                f"Total Letters: {quotation.get('total_letters', 'N/A')}",
-                f"Finish: {quotation.get('finish', 'N/A')}",
-            ]
-            
-            if quotation.get('multi_color', False):
-                text_content.append("Color Mode: Multi-Color")
-            else:
-                text_content.append(f"Color: {quotation.get('color', 'N/A')}")
-            
-            text_content.extend([
-                "",
-                "SELECTED OPTIONS:",
-                "-" * 50
-            ])
-            
-            options = quotation.get('options', {})
-            if options:
-                for option, selected in options.items():
-                    text_content.append(f"{option}: {'Yes' if selected else 'No'}")
-            else:
-                text_content.append("No options selected")
-            
-            costs = quotation.get('costs', {})
-            text_content.extend([
-                "",
-                "COST BREAKDOWN:",
-                "-" * 50,
-                f"Material Cost: ${costs.get('material_cost', 0):.2f}",
-                f"Finish Cost: ${costs.get('finish_cost', 0):.2f}",
-                f"Options Cost: ${costs.get('options_cost', 0):.2f}",
-                f"Subtotal: ${costs.get('subtotal', 0):.2f}"
-            ])
-            
-            if 'discount' in costs:
-                discount_percentage = costs.get('discount_percentage', 0)
-                discount_amount = costs.get('discount', 0)
-                text_content.append(f"Bulk Discount ({discount_percentage}%): -${discount_amount:.2f}")
-            
-            text_content.extend([
-                f"Tax (10%): ${costs.get('tax', 0):.2f}",
-                f"TOTAL: ${costs.get('total', 0):.2f}",
+                f"Production Time: {delivery_days} business days",
+                f"Estimated Completion: {delivery_date}",
                 ""
             ])
-            
-            if 'estimated_delivery_days' in quotation:
-                delivery_days = quotation['estimated_delivery_days']
-                delivery_date = (datetime.now() + timedelta(days=delivery_days)).strftime("%B %d, %Y")
-                
-                text_content.extend([
-                    "DELIVERY INFORMATION:",
-                    "-" * 50,
-                    f"Production Time: {delivery_days} business days",
-                    f"Estimated Completion: {delivery_date}",
-                    ""
-                ])
-            
-            text_content.append("Thank you for your business!")
-            
-            # Join the text content with line breaks
-            content = "\n".join(text_content)
-            
-            # Write to buffer
-            buffer.write(content.encode('utf-8'))
-            
-            # Get the value and close the buffer
-            value = buffer.getvalue()
-            buffer.close()
-            
-            # Return a text file as backup - user can still get their data
-            return value
-            
-        except Exception as nested_ex:
-            # If even the text fallback fails, provide error message
-            st.error(f"Text fallback also failed: {nested_ex}")
-            error_message = f"Error generating PDF: {str(reportlab_error)}\nFallback error: {str(nested_ex)}"
-            buffer.write(error_message.encode('utf-8'))
-            
-            # Get the value and close the buffer
-            value = buffer.getvalue()
-            buffer.close()
-            
-            return value
+        
+        text_content.append("Thank you for your business!")
+        
+        # Join the text content with line breaks
+        content = "\n".join(text_content)
+        
+        # Write to buffer
+        buffer.write(content.encode('utf-8'))
+        
+    except Exception as text_error:
+        # If even the text fallback fails, provide error message
+        error_message = f"Error generating document: {str(text_error)}\nPlease try again."
+        buffer.write(error_message.encode('utf-8'))
+    
+    # Get the value and close the buffer
+    value = buffer.getvalue()
+    buffer.close()
+    
+    return value
