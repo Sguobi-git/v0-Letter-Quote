@@ -4,7 +4,7 @@ def display_quotation_details(quote_idx: int) -> None:
         quote = st.session_state.quotations[quote_idx]
         
         # Display in an expander
-        with st.expander("Quotation Details", expanded=True):            
+        with st.expander("Quotation Details", expanded=True):
             # Basic information
             col1, col2 = st.columns(2)
             
@@ -57,11 +57,15 @@ def display_quotation_details(quote_idx: int) -> None:
         
         # Add export tab
         st.markdown("### Export Options")
-        
-        # Pre-generate the export data to avoid timing issues
-        csv_data = export_to_csv(quote)
-        pdf_data = export_to_pdf(quote)
 
+        # --- PDF logo integration ---
+        # Path to your logo image (adapt as needed)
+        logo_path = r"project/app/static/images/original_logo.png"
+        # Pass the logo path to the export_to_pdf function
+        # You need to adapt your export_to_pdf function to accept a logo_path argument and use it
+        csv_data = export_to_csv(quote)
+        pdf_data = export_to_pdf(quote, logo_path=logo_path)
+        # --- End PDF logo integration ---
 
         # CSV download button
         st.download_button(
@@ -79,8 +83,6 @@ def display_quotation_details(quote_idx: int) -> None:
             mime="application/pdf"
         )
 
-        
-        
         col1, col2 = st.columns(2)
         
         with col1:
