@@ -617,34 +617,34 @@ def display_quotation(quotation: Dict[str, Any]) -> None:
         - **Total**: {format_currency(quotation["costs"]["total"])}
         """)
 
-    with tab_export:
-        st.markdown("### Export Options")
-
-        col1, col2 = st.columns(2)
-
-        with col1:
-            if st.button("Export as CSV", key="export_csv"):
-                with st.spinner("Generating CSV file..."):
-                    csv_data = export_to_csv(quotation)
+        with tab_export:
+            st.markdown("### Export Options")
+    
+            if "current_quote" in st.session_state:
+                quotation = st.session_state.current_quote
+    
+                csv_data = export_to_csv(quotation)
+                pdf_data = export_to_pdf(quotation)
+    
+                col1, col2 = st.columns(2)
+    
+                with col1:
                     st.download_button(
                         label="Download CSV",
                         data=csv_data,
                         file_name=f"quotation_{quotation['letters'].replace(' ', '_')}.csv",
-                        mime="text/csv",
-                        key="download_csv"
+                        mime="text/csv"
                     )
-
-        with col2:
-            if st.button("Export as PDF", key="export_pdf"):
-                with st.spinner("Generating PDF file..."):
-                    pdf_data = export_to_pdf(quotation)
+    
+                with col2:
                     st.download_button(
                         label="Download PDF",
                         data=pdf_data,
                         file_name=f"quotation_{quotation['letters'].replace(' ', '_')}.pdf",
-                        mime="application/pdf",
-                        key="download_pdf"
+                        mime="application/pdf"
                     )
+            else:
+                st.warning("Please calculate a quotation first to enable exports.")
 
 
 def initialize_letter_properties() -> None:
