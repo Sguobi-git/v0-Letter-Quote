@@ -78,6 +78,7 @@ def export_to_csv(quotation: Dict[str, Any]) -> str:
 def export_to_pdf(quotation: Dict[str, Any]) -> bytes:
     """
     Export quotation data to PDF format with improved error handling and fallbacks.
+    Adds the company logo at the top of the PDF.
     
     Args:
         quotation: Quotation data dictionary
@@ -89,11 +90,12 @@ def export_to_pdf(quotation: Dict[str, Any]) -> bytes:
         # Try using ReportLab
         from reportlab.lib import colors
         from reportlab.lib.pagesizes import letter
-        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
         from reportlab.lib.units import inch
         from io import BytesIO
-        
+        import os
+
         # Ensure we have valid data throughout
         costs = quotation.get('costs', {})
         options = quotation.get('options', {})
@@ -109,6 +111,19 @@ def export_to_pdf(quotation: Dict[str, Any]) -> bytes:
         # Container for elements to build the PDF
         elements = []
         
+        # Add company logo at the top
+        logo_path = "project/app/static/images/original_logo.png"
+        if os.path.exists(logo_path):
+            try:
+                # width=200px, keep aspect ratio
+                logo = Image(logo_path, width=200, hAlign='CENTER')
+                elements.append(logo)
+                elements.append(Spacer(1, 0.2*inch))
+            except Exception as img_err:
+                st.warning(f"Could not add logo to PDF: {img_err}")
+        else:
+            st.warning(f"Logo file not found at {logo_path}. Skipping logo in PDF.")
+
         # Get styles
         styles = getSampleStyleSheet()
         title_style = styles['Heading1']
