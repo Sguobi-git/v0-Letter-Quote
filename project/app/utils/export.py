@@ -20,22 +20,22 @@ def export_to_csv(quotation: Dict[str, Any]) -> str:
         # Use safe string conversion for all values
         flat_data = {
             "Quotation Date": datetime.now().strftime("%Y-%m-%d"),
-            "Letters": str(quotation['letters']),
+            "Letters": str(quotation.get('letters', 'N/A')),
             "Font": str(quotation.get('font', 'Default')),
-            "Material": str(quotation['material']),
-            "Dimensions": str(quotation['dimensions']),
-            "Sets of Letters": str(quotation['quantity']),
-            "Total Letters": str(quotation['total_letters']),
-            "Finish": str(quotation['finish']),
-            "Material Cost": f"{quotation['costs']['material_cost']:.2f}",
-            "Finish Cost": f"{quotation['costs']['finish_cost']:.2f}",
-            "Options Cost": f"{quotation['costs']['options_cost']:.2f}",
-            "LED Lighting": "Yes" if quotation['options'].get('LED Lighting', False) else "No",
-            "Mounting Hardware": "Yes" if quotation['options'].get('Mounting Hardware', False) else "No",
-            "Installation": "Yes" if quotation['options'].get('Installation', False) else "No",
-            "Subtotal": f"{quotation['costs']['subtotal']:.2f}",
-            "Tax": f"{quotation['costs']['tax']:.2f}",
-            "Total": f"{quotation['costs']['total']:.2f}"
+            "Material": str(quotation.get('material', 'N/A')),
+            "Dimensions": str(quotation.get('dimensions', 'N/A')),
+            "Sets of Letters": str(quotation.get('quantity', 'N/A')),
+            "Total Letters": str(quotation.get('total_letters', 'N/A')),
+            "Finish": str(quotation.get('finish', 'N/A')),
+            "Material Cost": f"{quotation.get('costs', {}).get('material_cost', 0):.2f}",
+            "Finish Cost": f"{quotation.get('costs', {}).get('finish_cost', 0):.2f}",
+            "Options Cost": f"{quotation.get('costs', {}).get('options_cost', 0):.2f}",
+            "LED Lighting": "Yes" if quotation.get('options', {}).get('LED Lighting', False) else "No",
+            "Mounting Hardware": "Yes" if quotation.get('options', {}).get('Mounting Hardware', False) else "No",
+            "Installation": "Yes" if quotation.get('options', {}).get('Installation', False) else "No",
+            "Subtotal": f"{quotation.get('costs', {}).get('subtotal', 0):.2f}",
+            "Tax": f"{quotation.get('costs', {}).get('tax', 0):.2f}",
+            "Total": f"{quotation.get('costs', {}).get('total', 0):.2f}"
         }
         
         # Add color information with safe handling
@@ -43,7 +43,7 @@ def export_to_csv(quotation: Dict[str, Any]) -> str:
             flat_data["Color Mode"] = "Multi-Color"
             try:
                 # Safely convert letter colors to JSON string
-                flat_data["Letter Colors"] = json.dumps(quotation['letter_colors'])
+                flat_data["Letter Colors"] = json.dumps(quotation.get('letter_colors', {}))
             except:
                 flat_data["Letter Colors"] = "(Color data unavailable)"
         else:
@@ -51,15 +51,17 @@ def export_to_csv(quotation: Dict[str, Any]) -> str:
             flat_data["Color"] = str(quotation.get('color', 'Default'))
         
         # Add discount information if present with safe handling
-        if 'discount' in quotation.get('costs', {}):
-            flat_data["Discount Percentage"] = f"{quotation['costs']['discount_percentage']}%"
-            flat_data["Discount Amount"] = f"{quotation['costs']['discount']:.2f}"
+        costs = quotation.get('costs', {})
+        if 'discount' in costs:
+            flat_data["Discount Percentage"] = f"{costs.get('discount_percentage', 0)}%"
+            flat_data["Discount Amount"] = f"{costs.get('discount', 0):.2f}"
         
         try:
             # Try pandas DataFrame approach
             df = pd.DataFrame([flat_data])
             return df.to_csv(index=False)
-        except:
+        except Exception as e:
+            st.warning(f"Falling back to manual CSV generation: {e}")
             # Fallback to manual CSV creation if pandas fails
             csv_rows = [",".join(flat_data.keys())]
             csv_rows.append(",".join([f'"{str(v)}"' for v in flat_data.values()]))
@@ -73,7 +75,7 @@ def export_to_csv(quotation: Dict[str, Any]) -> str:
 
 def export_to_pdf(quotation: Dict[str, Any]) -> bytes:
     """
-    Export quotation data to PDF format using ReportLab with improved error handling.
+    Export quotation data to PDF format with improved error handling and fallbacks.
     
     Args:
         quotation: Quotation data dictionary
@@ -82,13 +84,17 @@ def export_to_pdf(quotation: Dict[str, Any]) -> bytes:
         PDF data as bytes
     """
     try:
-        # Try using ReportLab which is more commonly available than FPDF
+        # Try using ReportLab
         from reportlab.lib import colors
         from reportlab.lib.pagesizes import letter
         from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
         from reportlab.lib.units import inch
         from io import BytesIO
+        
+        # Ensure we have valid data throughout
+        costs = quotation.get('costs', {})
+        options = quotation.get('options', {})
         
         # Create a PDF buffer
         buffer = BytesIO()
@@ -151,9 +157,13 @@ def export_to_pdf(quotation: Dict[str, Any]) -> bytes:
         elements.append(Paragraph("Selected Options", subtitle_style))
         
         options_data = []
-        for option, selected in quotation.get('options', {}).items():
+        for option, selected in options.items():
             options_data.append([str(option) + ":", "Yes" if selected else "No"])
         
+        # Make sure we have at least one option to display
+        if not options_data:
+            options_data = [["No options selected", ""]]
+            
         options_table = Table(options_data, colWidths=[1.5*inch, 4*inch])
         options_table.setStyle(TableStyle([
             ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
@@ -168,7 +178,6 @@ def export_to_pdf(quotation: Dict[str, Any]) -> bytes:
         # Cost Breakdown
         elements.append(Paragraph("Cost Breakdown", subtitle_style))
         
-        costs = quotation.get('costs', {})
         costs_data = [
             ["Material Cost:", f"${costs.get('material_cost', 0):.2f}"],
             ["Finish Cost:", f"${costs.get('finish_cost', 0):.2f}"],
@@ -240,12 +249,13 @@ def export_to_pdf(quotation: Dict[str, Any]) -> bytes:
         
         return pdf_value
         
-    except Exception as e:
-        # Fall back to a simple text file if PDF generation fails
-        import io
+    except Exception as reportlab_error:
+        # Log the ReportLab error
+        st.warning(f"ReportLab PDF generation failed: {reportlab_error}")
+        
+        # Fall back to a simple text file
         buffer = io.BytesIO()
         
-        # Create a simple text report as fallback
         try:
             current_date = datetime.now().strftime('%B %d, %Y')
             text_content = [
@@ -275,8 +285,12 @@ def export_to_pdf(quotation: Dict[str, Any]) -> bytes:
                 "-" * 50
             ])
             
-            for option, selected in quotation.get('options', {}).items():
-                text_content.append(f"{option}: {'Yes' if selected else 'No'}")
+            options = quotation.get('options', {})
+            if options:
+                for option, selected in options.items():
+                    text_content.append(f"{option}: {'Yes' if selected else 'No'}")
+            else:
+                text_content.append("No options selected")
             
             costs = quotation.get('costs', {})
             text_content.extend([
@@ -320,13 +334,21 @@ def export_to_pdf(quotation: Dict[str, Any]) -> bytes:
             # Write to buffer
             buffer.write(content.encode('utf-8'))
             
+            # Get the value and close the buffer
+            value = buffer.getvalue()
+            buffer.close()
+            
+            # Return a text file as backup - user can still get their data
+            return value
+            
         except Exception as nested_ex:
             # If even the text fallback fails, provide error message
-            error_message = f"Error generating PDF: {str(e)}\nFallback error: {str(nested_ex)}"
+            st.error(f"Text fallback also failed: {nested_ex}")
+            error_message = f"Error generating PDF: {str(reportlab_error)}\nFallback error: {str(nested_ex)}"
             buffer.write(error_message.encode('utf-8'))
-        
-        # Get the value and close the buffer
-        value = buffer.getvalue()
-        buffer.close()
-        
-        return value
+            
+            # Get the value and close the buffer
+            value = buffer.getvalue()
+            buffer.close()
+            
+            return value
