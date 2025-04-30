@@ -227,34 +227,34 @@ def main() -> None:
     st.markdown("---")
 
     # Main content with tabs
-    tab1, tab2, tab3 = st.tabs(["Create New Quote", "Saved Quotes", "Settings"])
+    tab1, tab2 = st.tabs(["Create New Quote", "Settings"])
 
     with tab1:
         render_3d_preview()
         render_quotation_form()
 
-    with tab2:
-        # Display saved quotations
-        # Instead of calling display_quotation_details() with no argument,
-        # show a list of saved quotations and allow user to select one to view details.
-        if not st.session_state.quotations:
-            st.info("No saved quotations yet.")
-        else:
-            st.markdown("### Saved Quotations")
-            # List quotations with a selectbox or radio
-            quote_labels = [
-                f"#{i+1}: {q['letters']} ({q.get('material', 'Material')}, {q.get('color', 'Color')})"
-                for i, q in enumerate(st.session_state.quotations)
-            ]
-            selected_idx = st.selectbox(
-                "Select a quotation to view details:",
-                options=list(range(len(st.session_state.quotations))),
-                format_func=lambda i: quote_labels[i],
-                key="quote_select_idx"
-            )
-            display_quotation_details(selected_idx)
+    # with tab2:
+    #     # Display saved quotations
+    #     # Instead of calling display_quotation_details() with no argument,
+    #     # show a list of saved quotations and allow user to select one to view details.
+    #     if not st.session_state.quotations:
+    #         st.info("No saved quotations yet.")
+    #     else:
+    #         st.markdown("### Saved Quotations")
+    #         # List quotations with a selectbox or radio
+    #         quote_labels = [
+    #             f"#{i+1}: {q['letters']} ({q.get('material', 'Material')}, {q.get('color', 'Color')})"
+    #             for i, q in enumerate(st.session_state.quotations)
+    #         ]
+    #         selected_idx = st.selectbox(
+    #             "Select a quotation to view details:",
+    #             options=list(range(len(st.session_state.quotations))),
+    #             format_func=lambda i: quote_labels[i],
+    #             key="quote_select_idx"
+    #         )
+    #         display_quotation_details(selected_idx)
 
-    with tab3:
+    with tab2:
         # Settings tab
         render_settings()
 
