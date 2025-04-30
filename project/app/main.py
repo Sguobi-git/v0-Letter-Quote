@@ -188,7 +188,8 @@ def main() -> None:
 
     with tab2:
         # Display saved quotations
-        display_saved_quotations()
+        # display_saved_quotations()
+        display_quotation_details()
 
     with tab3:
         # Settings tab
