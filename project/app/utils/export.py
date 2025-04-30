@@ -271,7 +271,7 @@ def export_to_pdf(quotation: Dict[str, Any]) -> bytes:
                     # Y coordinate from bottom: page height - logo height - a small margin
                     page_width, page_height = letter
                     # Move the logo more to the left by reducing the x offset (even to 0 for flush left)
-                    x = 0  # was doc.leftMargin
+                    x = 20  # was doc.leftMargin
                     # Move the logo a little bit further down (increase the offset from the top edge)
                     # Original: y = page_height - (logo_height_inch * inch) - 0.25*inch
                     # Let's move it down by 0.15 inch more (total 0.4 inch from top edge)
