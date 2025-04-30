@@ -119,7 +119,8 @@ def export_to_pdf(quotation: Dict[str, Any]) -> bytes:
 
         # Prepare logo info for later use in onFirstPage
         logo_path = "project/app/static/images/original_logo.png"
-        logo_width_inch = 2.0
+        # Reduce logo size a bit
+        logo_width_inch = 1.5  # was 2.0
         logo_height_inch = logo_width_inch * (142/400)  # keep aspect ratio
 
         # Add title (no logo in flow, logo will be drawn on canvas)
@@ -267,10 +268,11 @@ def export_to_pdf(quotation: Dict[str, Any]) -> bytes:
                     # The origin (0,0) is at the bottom left, so we need to draw at the top left
                     # Letter size: 8.5 x 11 inch, margins: 1 inch (72pt)
                     # So, left margin = 72pt, top margin = 72pt
-                    # Y coordinate from bottom: page height - top margin - logo height
+                    # Y coordinate from bottom: page height - logo height - a small margin
                     page_width, page_height = letter
                     x = doc.leftMargin
-                    y = page_height - doc.topMargin - (logo_height_inch * inch)
+                    # Place the logo higher: reduce the offset from the top margin
+                    y = page_height - (logo_height_inch * inch) - 0.25*inch  # 0.25 inch from top edge
                     img = Image(logo_path, width=logo_width_inch * inch, height=logo_height_inch * inch)
                     img.drawOn(canvas, x, y)
                 except Exception as img_err:
