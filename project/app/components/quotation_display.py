@@ -323,9 +323,9 @@ def display_current_quotation() -> None:
         # Action buttons
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("Save Quotation", key="save_quote_btn", use_container_width=True):
-                st.session_state.quotations.append(quote)
-                st.success("Quotation saved successfully!")
+            # if st.button("Save Quotation", key="save_quote_btn", use_container_width=True):
+            #     st.session_state.quotations.append(quote)
+            #     st.success("Quotation saved successfully!")
 
         with col2:
             export_options = st.selectbox("Export Format", ["CSV", "PDF"], key="export_format")
