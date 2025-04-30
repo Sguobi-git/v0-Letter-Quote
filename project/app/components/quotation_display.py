@@ -132,26 +132,31 @@ def display_quotation_details(quote_idx: int) -> None:
             
             # Export options
             st.markdown("### Export Options")
+            
+            # Pre-generate the export data to avoid timing issues
+            csv_data = export_to_csv(quote)
+            pdf_data = export_to_pdf(quote)
+            
             col1, col2 = st.columns(2)
             
             with col1:
-                if st.button("Export to CSV", key=f"csv_export_{quote_idx}", use_container_width=True):
-                    export_data = export_to_csv(quote)
-                    st.download_button(
-                        label="Download CSV",
-                        data=export_data,
-                        file_name=f"quotation_{quote_idx + 1}_{datetime.now().strftime('%Y%m%d')}.csv",
-                        mime="text/csv",
-                        key=f"download_csv_{quote_idx}"
-                    )
+                # Direct download button with pre-generated CSV data
+                st.download_button(
+                    label="Export to CSV",
+                    data=csv_data,
+                    file_name=f"quotation_{quote_idx + 1}_{datetime.now().strftime('%Y%m%d')}.csv",
+                    mime="text/csv",
+                    key=f"download_csv_{quote_idx}",
+                    use_container_width=True
+                )
             
             with col2:
-                if st.button("Export to PDF", key=f"pdf_export_{quote_idx}", use_container_width=True):
-                    export_data = export_to_pdf(quote)
-                    st.download_button(
-                        label="Download PDF",
-                        data=export_data,
-                        file_name=f"quotation_{quote_idx + 1}_{datetime.now().strftime('%Y%m%d')}.pdf",
-                        mime="application/pdf",
-                        key=f"download_pdf_{quote_idx}"
-                    )
+                # Direct download button with pre-generated PDF data
+                st.download_button(
+                    label="Export to PDF",
+                    data=pdf_data,
+                    file_name=f"quotation_{quote_idx + 1}_{datetime.now().strftime('%Y%m%d')}.pdf",
+                    mime="application/pdf",
+                    key=f"download_pdf_{quote_idx}",
+                    use_container_width=True
+                )
