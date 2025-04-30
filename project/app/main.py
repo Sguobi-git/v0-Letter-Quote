@@ -68,23 +68,57 @@ def change_user_password(username: str, old_password: str, new_password: str) ->
         return True
     return False
 
+# --- Persistent Login Utilities ---
+
+LOGIN_FILE = os.path.join(os.path.dirname(__file__), "login_state.json")
+
+def save_login_state(username: str) -> None:
+    """Save the currently logged-in username to a file."""
+    try:
+        with open(LOGIN_FILE, "w") as f:
+            json.dump({"username": username}, f)
+    except Exception:
+        pass
+
+def load_login_state() -> Optional[str]:
+    """Load the currently logged-in username from a file."""
+    if not os.path.exists(LOGIN_FILE):
+        return None
+    try:
+        with open(LOGIN_FILE, "r") as f:
+            data = json.load(f)
+            return data.get("username")
+    except Exception:
+        return None
+
+def clear_login_state() -> None:
+    """Remove the persistent login file."""
+    try:
+        if os.path.exists(LOGIN_FILE):
+            os.remove(LOGIN_FILE)
+    except Exception:
+        pass
+
 def login_signup_form():
-    """Streamlit login/signup form."""
+    """Streamlit login/signup form with persistent login support."""
     st.title("Login or Sign Up")
     tab_login, tab_signup = st.tabs(["Login", "Sign Up"])
 
     with tab_login:
         login_username = st.text_input("Username", key="login_username")
         login_password = st.text_input("Password", type="password", key="login_password")
+        remember_me = st.checkbox("Remember me", key="remember_me")
         login_btn = st.button("Login", key="login_btn")
         if login_btn:
             if authenticate_user(login_username, login_password):
                 st.session_state.authenticated = True
                 st.session_state.username = login_username
+                if remember_me:
+                    save_login_state(login_username)
+                else:
+                    clear_login_state()
                 st.success("Logged in successfully!")
                 st.experimental_rerun()
-                # from streamlit.runtime.scriptrunner import rerun
-                # rerun()
             else:
                 st.error("Invalid username or password.")
 
@@ -126,7 +160,20 @@ def load_css() -> None:
 def init_session_state() -> None:
     """Initialize all session state variables."""
     if 'authenticated' not in st.session_state:
-        st.session_state.authenticated = False
+        # Try to load persistent login
+        username = load_login_state()
+        if username is not None:
+            # Check if user still exists
+            users = load_users()
+            if username in users:
+                st.session_state.authenticated = True
+                st.session_state.username = username
+            else:
+                st.session_state.authenticated = False
+                st.session_state.username = None
+                clear_login_state()
+        else:
+            st.session_state.authenticated = False
 
     if 'username' not in st.session_state:
         st.session_state.username = None
@@ -354,6 +401,7 @@ def render_settings() -> None:
     if st.button("Log Out"):
         st.session_state.authenticated = False
         st.session_state.username = None
+        clear_login_state()
         st.rerun()
 
 if __name__ == "__main__":
