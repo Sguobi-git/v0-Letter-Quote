@@ -34,8 +34,8 @@ def render_quotation_form() -> None:
         "Orange": "#ffa500"
     }
 
-    # Check if we need to reuse a saved quotation
-    duplicate_mode = st.session_state.get("duplicate_quotation_index") is not None
+    # # Check if we need to reuse a saved quotation
+    # duplicate_mode = st.session_state.get("duplicate_quotation_index") is not None
 
     if duplicate_mode:
         # Load the selected quotation data to duplicate
@@ -534,12 +534,12 @@ def display_quotation(quotation: Dict[str, Any]) -> None:
 
         st.metric("Final Quote Amount", format_currency(costs["total"]))
 
-        if st.button("Save This Quote", key="save_quote"):
-            if "quotations" not in st.session_state:
-                st.session_state.quotations = []
+        # if st.button("Save This Quote", key="save_quote"):
+        #     if "quotations" not in st.session_state:
+        #         st.session_state.quotations = []
 
-            st.session_state.quotations.append(quotation)
-            st.success(f"Quote for '{quotation['letters']}' saved successfully!")
+        #     st.session_state.quotations.append(quotation)
+        #     st.success(f"Quote for '{quotation['letters']}' saved successfully!")
 
     with tab_details:
         st.markdown("### Detailed Cost Calculations")
