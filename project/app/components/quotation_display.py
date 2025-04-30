@@ -55,35 +55,35 @@ def display_quotation_details(quote_idx: int) -> None:
                     delivery_date = datetime.now().strftime("%B %d, %Y")  # In a real app, calculate from saved date
                     st.markdown(f"**Production Time:** {delivery_days} business days")
         
-        # Add export tab
-        st.markdown("### Export Options")
-        
-        # Pre-generate the export data to avoid timing issues
-        csv_data = export_to_csv(quote)
-        pdf_data = export_to_pdf(quote)
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            # Direct download button with pre-generated CSV data
-            st.download_button(
-                label="Export as CSV",
-                data=csv_data,
-                file_name=f"quotation_{quote['letters'].replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.csv",
-                mime="text/csv",
-                key=f"download_csv_{quote_idx}",
-                use_container_width=True,
-                help="Download quote as CSV format for spreadsheets"
-            )
-        
-        with col2:
-            # Direct download button with pre-generated PDF data
-            st.download_button(
-                label="Export as PDF", 
-                data=pdf_data,
-                file_name=f"quotation_{quote['letters'].replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.pdf",
-                mime="application/pdf",
-                key=f"download_pdf_{quote_idx}",
-                use_container_width=True,
-                help="Download quote as PDF document"
-            )
+        with tab_export:
+            st.markdown("### Export Options")
+            
+            # Pre-generate the export data to avoid timing issues
+            csv_data = export_to_csv(quotation)
+            pdf_data = export_to_pdf(quotation)
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                # Direct download button with pre-generated CSV data
+                st.download_button(
+                    label="Export as CSV",
+                    data=csv_data,
+                    file_name=f"quotation_{quotation['letters'].replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.csv",
+                    mime="text/csv",
+                    key="download_csv_export",
+                    use_container_width=True,
+                    help="Download quote as CSV format for spreadsheets"
+                )
+            
+            with col2:
+                # Direct download button with pre-generated PDF data
+                st.download_button(
+                    label="Export as PDF", 
+                    data=pdf_data,
+                    file_name=f"quotation_{quotation['letters'].replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.pdf",
+                    mime="application/pdf",
+                    key="download_pdf_export",
+                    use_container_width=True,
+                    help="Download quote as PDF document"
+                )
