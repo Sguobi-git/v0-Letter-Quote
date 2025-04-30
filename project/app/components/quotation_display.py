@@ -180,7 +180,7 @@ def main() -> None:
     st.markdown("---")
 
     # Main content with tabs
-    tab1, tab2, tab3 = st.tabs(["Create New Quote", "Saved Quotes", "Settings"])
+    tab1, tab2 = st.tabs(["Create New Quote", "Settings"])
 
     with tab1:
         render_3d_preview()
@@ -191,7 +191,7 @@ def main() -> None:
     #     # display_saved_quotations()
     #     display_quotation_details()
 
-    with tab3:
+    with tab2:
         # Settings tab
         render_settings()
 
