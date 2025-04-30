@@ -116,11 +116,13 @@ def export_to_pdf(quotation: Dict[str, Any]) -> bytes:
         logo_added = False
         if os.path.exists(logo_path):
             try:
-                logo_display_size = 1.5 * inch  # 1.5 inch width and height
-                logo = Image(logo_path, width=logo_display_size, height=logo_display_size, hAlign='LEFT')
+                # The cropped logo is 400x142 px. Let's keep its aspect ratio.
+                # 400/142 ≈ 2.82. Let's set width to 2.0 inch, height to 0.71 inch (2.0/2.82)
+                logo_width_inch = 2.0
+                logo_height_inch = logo_width_inch * (142/400)
+                logo = Image(logo_path, width=logo_width_inch * inch, height=logo_height_inch * inch, hAlign='LEFT')
                 # To ensure the logo is at the top left, use a 1-row, 2-col table: logo | (empty)
-                # This prevents the logo from being centered or pushed down by spacers.
-                logo_table = PlatypusTable([[logo, ""]], colWidths=[logo_display_size, None])
+                logo_table = PlatypusTable([[logo, ""]], colWidths=[logo_width_inch * inch, None])
                 logo_table.setStyle(TableStyle([
                     ('VALIGN', (0, 0), (0, 0), 'TOP'),
                     ('LEFTPADDING', (0, 0), (0, 0), 0),
