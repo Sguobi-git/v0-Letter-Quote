@@ -115,8 +115,11 @@ def export_to_pdf(quotation: Dict[str, Any]) -> bytes:
         logo_path = "project/app/static/images/original_logo.png"
         if os.path.exists(logo_path):
             try:
-                # width=200px, keep aspect ratio
-                logo = Image(logo_path, width=200, hAlign='CENTER')
+                # The logo is 400x400 px. To keep it clean and not crushed, set width and height to the same value,
+                # and use preserveAspectRatio=True (default). Let's display it at 1.5 inch (about 144 px) width.
+                # This will scale it down but keep it sharp and square.
+                logo_display_size = 1.5 * inch  # 1.5 inch width and height
+                logo = Image(logo_path, width=logo_display_size, height=logo_display_size, hAlign='CENTER')
                 elements.append(logo)
                 elements.append(Spacer(1, 0.2*inch))
             except Exception as img_err:
